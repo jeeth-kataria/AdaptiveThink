@@ -1,40 +1,85 @@
-# Your Project Name
+# AdaptiveThink
 
-- **Problem Statement Number** - 
-- **Problem Statement Title** - *(Must exactly match one of the 11 Samsung EnnovateX AX Hackathon Problem Statements)*
-- **Team name** - *(Same as Phase 1 Team name)*
-- **Team members (Names)** - *Member 1 Name*, *Member 2 Name*
-- **Institute/College Name** - *Name*, *Campus Name & Address (In case the institute has multiple campuses)*
-- **Final Presentation Google Drive Link** - *Upload the PDF presentation for your final submission on Google Drive (It should be openly accessible and not behind any login wall)*
-- **Full Submission Demo Video Link** - *(Upload the Demo video on Youtube as a public or unlisted video and share the link. Google Drive uploads for video is not allowed.)*
-- **Setup & Result Reproducibility Video Link** - *(Upload the Demo video on Youtube as a public or unlisted video and share the link. Google Drive uploads for video is not allowed.)*
+- **Problem Statement Number** - PS06
+- **Problem Statement Title** - Reinforcement Learning for Small Language Model (SLM) Reasoning
+- **Team name** - StateZero
+- **Team members (Names)** - Jeeth Bhavesh Kataria, Ojasvi Poonia
+- **Institute/College Name** - Ramaiah Institute of Technology, Bengaluru, Karnataka - 560054
+- **Final Presentation Google Drive Link** - *(to be added)*
+- **Full Submission Demo Video Link** - *(YouTube link — to be added after training)*
+- **Setup & Result Reproducibility Video Link** - *(YouTube link — to be added after training)*
+
+---
 
 ### Project Artefacts
 
-- **Technical Documentation** - Create a **docs** folder and add all technical details in markdown files inside this folder explaining the project Technical Stack, List of OSS libraries/projects used along with their links, the technical architecture of your solution, implementation details, installation instructions, user guide, salient features of the projects. Kindly add screenshots wherever possible.
-- **[Important]** Create a file `docs/ax.md` whiere you explain in detail how you utilizes open weight models and/or agentic development tools to implement your solution. Explain in detail your  Agentic AI setup , Agentic workflows, Reasoning & planning pipelines, Tool use / tool chaining, Coding assistants, agents, harness, MCP servers, agents.md, skills, Memory / context handling, Multi-agent orchestration systems, etc. Please highlight from your experience - what worked and **what did not work**.
-- **Source Code** - Create a **src** folder and add all developed project source codes (including training & benchmark evaluation codes) in the repo. The code must be capable of being successfully installed/executed and must run consistently on the intended platforms.
-- **Models Used** - *(Hugging Face links to all models used in the project. You are permitted to use only open weight models.)*
-- **Models Published** - *(In case you have developed a model as a part of your solution, kindly upload it on Hugging Face under appropriate open source license and add the link here.)*
-- **Datasets Used** - *(Links to all datasets used in the project. You are permitted to use publicly available datasets under licenses like Creative Commons, Open Data Commons, or equivalent.)*
-- **Datasets Published** - *(Links to all datasets created for the project and published on Hugging Face. You are allowed to publish any synthetic or proprietary dataset used in their project, but will be responsible for any legal compliance and permission for the same. The dataset can be published under Creative Commons, Open Data Commons, or equivalent license.)*
+- **Technical Documentation** - [`docs/technical.md`](docs/technical.md) — stack, architecture, OSS libraries, installation, user guide. [`docs/ax.md`](docs/ax.md) — agentic AI usage.
+- **[Important]** [`docs/ax.md`](docs/ax.md) — detailed explanation of open-weight model usage, agentic workflows, tool chaining via Kiro CLI, reasoning & planning pipelines, memory/context handling, what worked and what did not.
+- **Source Code** - [`src/adaptivethink/`](src/adaptivethink/) — all training, evaluation, and deployment code.
+- **Models Used**
+  - [deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B) — reasoning SLM (trainee)
+  - [Qwen/Qwen2.5-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct) — verifier encoder base
+  - deepseek-ai/DeepSeek-V3 (via API, inference-only for teacher labels — not in final product)
+- **Models Published**
+  - `statezero/verifier-400m` *(to be published after training)*
+  - `statezero/router-1p5b-lora` *(to be published after training)*
+- **Datasets Used**
+  - [openai/gsm8k](https://huggingface.co/datasets/openai/gsm8k) — MIT License
+  - [HuggingFaceH4/MATH-500](https://huggingface.co/datasets/HuggingFaceH4/MATH-500) — MIT License
+  - [wics/strategy-qa](https://huggingface.co/datasets/wics/strategy-qa) — Apache 2.0
+  - [cais/mmlu](https://huggingface.co/datasets/cais/mmlu) — MIT License
+- **Datasets Published**
+  - `statezero/difficulty-labels` — teacher-labelled difficulty scores for 12k math/reasoning questions, Apache 2.0 *(to be published after training)*
 
-#### Final Presentation
+---
 
-Unlike Phase 1 presentation, in Phase 2 you can freely decide the template, flow and content of your technical presentation. Ensure you cover all aspects of your solution - innovation, novelty, architecture, open datasets/models developed and used, final deliverable details, KPIs of your solution, AI/Agent use, any other details. 
+### What is AdaptiveThink?
 
-#### Full Submission Demo Video
+SLMs waste compute by running full chain-of-thought on every query — easy or hard. AdaptiveThink fixes this with three coupled components:
 
-Create a high quality video demonstration your solution in real life and showcasing how it is actually solves the proposed AX Hackathon problem.
+```
+Question
+   │
+   ▼
+┌──────────────────────┐
+│  Difficulty Verifier  │  400M cross-encoder distilled from DeepSeek-V3
+│  (external tool)      │  outputs difficulty score d ∈ [0,1]
+└──────────┬───────────┘
+           │ d
+           ▼
+┌──────────────────────┐
+│  RL-Trained Router    │  2-token decision: <think> or <no_think>
+│  GRPO on 1.5B SLM    │  reward = correctness − λ·tokens·(1−d)
+└──────────┬───────────┘
+           │
+    ┌──────┴──────┐
+<think>       <no_think>
+Full CoT      Direct answer
+    └──────┬──────┘
+      \boxed{answer}
+```
 
-#### Setup & Result Reproducibility Video
+**Key novelty vs prior work:** The length penalty is gated by `(1−d)` where `d` comes from an *external* distilled verifier — not internal model confidence (AdaptThink) or group-rollout pass-rate (CODA). Easy questions pay full penalty; hard questions pay near-zero, preventing routing collapse on difficult items.
 
-To ensure reproducibility of results and to verify the presented KPIs, we require you to create a video demonstrating:
-- Step by step project installation,
-- Data/model download steps, 
-- Execution of all required codes to train the developed models (if any)
-- Execution of all evaluation codes to reproduce the presented results/KPIs 
+### Quick Start
 
-### Attribution 
+```bash
+git clone https://github.com/jeeth-kataria/AdaptiveThink.git
+cd AdaptiveThink
+bash scripts/01_setup.sh
+```
 
-In case this project is built on top of an existing open source project, please provide the original project link here. Also, mention what new features were developed. Failing to attribute the source projects may lead to disqualification during the time of evaluation.
+See [`WHERE_TO_RUN.md`](WHERE_TO_RUN.md) for exact commands per environment (Colab T4 for data/verifier, Vast.ai RTX 4090 for GRPO training).
+
+### Attribution
+
+| Project | Link | Our use / new features |
+|---|---|---|
+| DeepSeek-R1 | [arxiv:2501.12948](https://arxiv.org/abs/2501.12948) | Base reasoning model; we add RL routing head |
+| HuggingFace TRL | [github.com/huggingface/trl](https://github.com/huggingface/trl) | GRPOTrainer |
+| Unsloth | [github.com/unslothai/unsloth](https://github.com/unslothai/unsloth) | Memory-efficient GRPO on single GPU |
+| Weaver (Stanford) | [arxiv:2506.18203](https://arxiv.org/abs/2506.18203) | Verifier distillation architecture; we integrate it as a live reward signal |
+| AdaptThink | [arxiv:2505.13417](https://arxiv.org/abs/2505.13417) | Adaptive thinking baseline; we extend with external verifier gating |
+| CODA | [arxiv:2603.08659](https://arxiv.org/abs/2603.08659) | Difficulty-gated reward baseline; our `d` is external not internal |
+| TTRL | [arxiv:2504.16084](https://arxiv.org/abs/2504.16084) | Test-time RL add-on |
+| llama.cpp | [github.com/ggerganov/llama.cpp](https://github.com/ggerganov/llama.cpp) | GGUF quantisation + on-device inference |
