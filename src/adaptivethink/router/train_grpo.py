@@ -74,14 +74,21 @@ def _load_data(path: str, verifier_model, verifier_tok, device: str):
 
 # ── Reward ────────────────────────────────────────────────────────────────────
 
-def _make_reward_fn(lambda_tok: float, lambda_obey: float):
+def _make_reward_fn(lambda_tok: float, lambda_obey: float, tokenizer=None):
     from adaptivethink.router.reward import compute_rewards
 
-    def reward_fn(completions, prompts, **kwargs):
+    def reward_fn(completions, prompts=None, **kwargs):
         # TRL passes dataset columns as kwargs
         answers = kwargs.get("answer", [""] * len(completions))
         difficulties = kwargs.get("difficulty", [0.5] * len(completions))
+        # Use the model's real tokenizer for an exact output-token count
+        # (the brief's reward is in tokens, not words).
+        token_counts = None
+        if tokenizer is not None:
+            token_counts = [len(tokenizer(c, add_special_tokens=False).input_ids)
+                            for c in completions]
         return compute_rewards(completions, list(answers), list(difficulties),
+                               token_counts=token_counts,
                                lambda_tok=lambda_tok, lambda_obey=lambda_obey)
     return reward_fn
 
@@ -173,7 +180,7 @@ def train(args):
     trainer = GRPOTrainer(
         model=model,
         tokenizer=tokenizer,
-        reward_funcs=_make_reward_fn(args.lambda_tok, args.lambda_obey),
+        reward_funcs=_make_reward_fn(args.lambda_tok, args.lambda_obey, tokenizer),
         args=grpo_cfg,
         train_dataset=dataset,
     )

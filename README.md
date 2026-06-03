@@ -71,6 +71,30 @@ bash scripts/01_setup.sh
 
 See [`WHERE_TO_RUN.md`](WHERE_TO_RUN.md) for exact commands per environment (Colab T4 for data/verifier, Vast.ai RTX 4090 for GRPO training).
 
+### End-to-end pipeline
+
+```bash
+bash scripts/01_setup.sh                  # env + pinned deps
+bash scripts/02_gen_teacher_labels.sh     # DeepSeek-V3 difficulty labels (Stage 1 data)
+bash scripts/03_train_verifier.sh         # Stage 1: 400M difficulty verifier
+bash scripts/04_train_grpo_router.sh 0    # Stage 2: GRPO router (seed 0; repeat 1,2)
+bash scripts/05_eval.sh 200               # baseline vs router + Pareto/KPI table
+bash scripts/06_quantize.sh               # Stage 3: GGUF Q4_K_M export
+bash scripts/07_ttrl.sh 0                 # optional Idea A: Test-Time RL ablation
+```
+
+`scripts/05_eval.sh` writes the KPI delta table to `results/figures/kpi_table.md`
+(flags whether ≥ +5% on ≥ 2 of GSM8K/MMLU/StrategyQA is met) and Pareto charts
+(accuracy vs compute) per benchmark. Configs for every stage live in [`configs/`](configs/).
+
+| Stage | Code | Config |
+|---|---|---|
+| 1 — Verifier distillation | [`src/adaptivethink/verifier/`](src/adaptivethink/verifier/) | [`configs/verifier_distill.yaml`](configs/verifier_distill.yaml) |
+| 2 — GRPO router | [`src/adaptivethink/router/`](src/adaptivethink/router/) | [`configs/grpo_router.yaml`](configs/grpo_router.yaml) |
+| 3 — Quantize + inference | [`src/adaptivethink/quantize/`](src/adaptivethink/quantize/), [`src/adaptivethink/inference/`](src/adaptivethink/inference/) | — |
+| Eval harness | [`eval/run_benchmarks.py`](eval/run_benchmarks.py), [`eval/plots.py`](eval/plots.py) | — |
+| Optional — TTRL | [`src/adaptivethink/ttrl/`](src/adaptivethink/ttrl/) | [`configs/ttrl_ablation.yaml`](configs/ttrl_ablation.yaml) |
+
 ### Attribution
 
 | Project | Link | Our use / new features |

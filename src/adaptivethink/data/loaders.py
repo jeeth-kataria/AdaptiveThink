@@ -39,6 +39,30 @@ def load_mmlu(subjects=None, seed=0, n=None):
     return items[:n] if n else items
 
 
+def load_aime24(seed=0, n=None):
+    """AIME 2024 — 30 advanced-math problems. Integer answers 0-999."""
+    ds = load_dataset("Maxwell-Jia/AIME_2024", split="train")
+    if n:
+        ds = ds.shuffle(seed=seed).select(range(min(n, len(ds))))
+    return [{"question": r["Problem"], "answer": str(r["Answer"]).strip()} for r in ds]
+
+
+def load_benchmark(name, split="test", seed=0, n=None):
+    """Dispatch by benchmark name. Used by the eval harness."""
+    name = name.lower()
+    if name == "gsm8k":
+        return load_gsm8k(split=split, seed=seed, n=n)
+    if name == "math500":
+        return load_math500(seed=seed, n=n)
+    if name == "strategyqa":
+        return load_strategyqa(seed=seed, n=n)
+    if name == "mmlu":
+        return load_mmlu(seed=seed, n=n)
+    if name == "aime24":
+        return load_aime24(seed=seed, n=n)
+    raise ValueError(f"Unknown benchmark: {name}")
+
+
 def build_verifier_pool(seed=0):
     """12k items for verifier distillation."""
     items = (
