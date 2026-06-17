@@ -26,7 +26,7 @@ SECTIONS = [
     ("## Section 7 — Quantise", ["c20_gguf_export.py"]),
     ("## Section 8 — On-device (Day 8+)", ["c21_ondevice_stub.py"]),
     ("## Section 9 — Upload + Wrap-up", ["c22_hf_upload.py", "c23_progress_docs.py",
-                                          "c24_vm_deallocate.py"]),
+                                          "c24_vm_deallocate.py", "c24b_git_backup.py"]),
 ]
 
 def make_markdown_cell(source):
