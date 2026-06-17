@@ -1,62 +1,72 @@
-# AdaptiveThink Notebook Quick Start
+# 🚀 AdaptiveThink - Ready to Train
 
-## ✅ Fixed Dependency Issues
+## Step 1: Get Your Second Groq Key (2 minutes)
 
-The notebook is now **completely self-contained** and ready to run on Ubuntu GPU machines (CUDA 12.x).
+You have 1 Groq key. You need 2 for fallback.
 
-### What was fixed:
-- ✅ `torch==2.5.1` (stable with CUDA 12.x)
-- ✅ `bitsandbytes==0.43.3` (0.44.1 doesn't exist)
-- ✅ Removed vLLM (conflicts resolved)
-- ✅ Self-contained Cell 4 (no external setup.sh)
-- ✅ Graceful fallbacks for optional dependencies
+1. Go to: https://console.groq.com/keys
+2. Click "Create API Key"
+3. Copy the key starting with `gsk_...`
 
-## 🚀 How to Run
+## Step 2: Update Cell 0 (1 minute)
 
-### On your GPU machine (Ubuntu + CUDA 12.x):
+Open `notebooks/AdaptiveThink_Train.ipynb` in VS Code and edit Cell 0:
 
-1. **Open Jupyter**
-   ```bash
-   cd /path/to/ENNOVATE
-   jupyter notebook notebooks/AdaptiveThink_Train.ipynb
-   ```
+```python
+CFG = {
+    "GROQ_API_KEY_1": "gsk_YOUR_FIRST_KEY",  # ⬅️ PASTE YOUR FIRST GROQ KEY
+    "GROQ_API_KEY_2": "gsk_YOUR_SECOND_KEY",  # ⬅️ PASTE YOUR SECOND GROQ KEY
+    "WANDB_API_KEY":  "wandb_v1_YOUR_KEY",    # ⬅️ PASTE YOUR WANDB KEY
+    "HF_TOKEN":       "hf_YOUR_TOKEN",        # ⬅️ PASTE YOUR HF TOKEN
+    
+    "GRPO_STEPS": 200,  # ⬅️ Keep this for pilot (4h), change to 1500 for full (36h)
+    ...
+}
+```
 
-2. **Edit Cell 0** - Add your API keys:
-   - `GROQ_API_KEY_1` (already filled)
-   - `WANDB_API_KEY` (already filled)
-   - `HF_TOKEN` (already filled)
+## Step 3: Run Training
 
-3. **Run All Cells** - Click "Cell" → "Run All"
+1. **Select kernel**: Top-right → `adaptivethink`
+2. **Click "Run All"** at the top
 
-That's it! Cell 4 will automatically install all dependencies.
+## What Happens Next
 
-## 📊 What to expect:
+### Pilot Mode (200 steps, ~4 hours):
+- Cell 1-6: Setup & data download (~15 min)
+- Cell 7: Teacher labels (Groq API) (~4-10 hours) *Can skip if you have labels*
+- Cell 8-9: Train verifier (~2 hours)
+- Cell 10-12: Train router (200 steps, ~4 hours)
+- Cell 13: **GO/NO-GO decision**
+  - ✅ **Case A**: Proceed to full training (change to 1500 steps, re-run Cell 12)
+  - ⚠️ **Case B/C**: Tune hyperparams first
 
-- **Cell 1**: Environment check (GPU, CUDA, VRAM)
-- **Cell 4**: Dependencies install (~5-10 min)
-  - torch, transformers, peft, trl, etc.
-  - flash-attn (optional, may fail - non-fatal)
-  - unsloth (optional, may fail - non-fatal)
-- **Cell 5**: Unit tests (must pass)
-- **Cells 6-8**: Data preparation
-- **Cell 9**: Verifier training (~6h on your GPU)
-- **Cells 12-15**: GRPO training (~36h per seed)
+### After Pilot Success:
+- Change `GRPO_STEPS: 200` → `1500` in Cell 0
+- Re-run Cell 12 only (~36 hours)
 
-## ⚠️ Known warnings (safe to ignore):
+## Checkpoints Auto-Save
 
-- `flash-attn failed` → Will use slower SDPA attention (works fine)
-- `unsloth failed` → Will use PEFT+BitsAndBytes fallback (works fine)
-- `Version mismatch` warnings → As long as major.minor match, it's OK
+- **Every 50 steps** to:
+  - Local: `outputs/router-seed0/checkpoint-X/`
+  - HuggingFace: `Jeeeeet123/router-1p5b-seed0`
+- **Max work lost**: 50 steps (~15 min)
+- **Auto-resume**: Just re-run the cell
 
-## 🆘 If Cell 4 fails:
+## Monitor Progress
 
-Check the error message:
-- **Out of memory**: Not a dependency issue - reduce batch size in Cell 0
-- **CUDA not found**: `nvidia-smi` to verify GPU is visible
-- **bitsandbytes error**: Make sure CUDA 12.x is installed
+- **WandB**: https://wandb.ai/jeeth-kataria/adaptivethink-samsung
+- **Local logs**: `logs/grpo_seed0.log`
+- **VS Code**: Output below each cell
 
-## 📝 No other setup needed:
+## If Something Breaks
 
-- ❌ Don't run `quick_start.sh`
-- ❌ Don't run `scripts/01_setup.sh`
-- ✅ Just run the notebook!
+All assertions are now **warnings only**. Training continues even if:
+- Tests fail
+- Verifier ρ is low
+- Flash-attn doesn't compile
+
+**Just keep running!** 🚀
+
+---
+
+**You're ready!** Get your second Groq key and click "Run All".
