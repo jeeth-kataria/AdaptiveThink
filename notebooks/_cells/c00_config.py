@@ -17,12 +17,12 @@ CFG = {
     "AZURE_KV_URL":          "",  # e.g. "https://adaptivethink-kv.vault.azure.net/"
 
     # ── HF Hub ───────────────────────────────────────────────────
-    "HF_ORG":              "statezero",
-    "VERIFIER_REPO":       "statezero/verifier-400m",
-    "LABELS_REPO":         "statezero/difficulty-labels",
+    "HF_ORG":              "jeeth-kataria",
+    "VERIFIER_REPO":       "jeeth-kataria/verifier-400m",
+    "LABELS_REPO":         "jeeth-kataria/difficulty-labels",
 
     # ── Wandb ────────────────────────────────────────────────────
-    "WANDB_PROJECT":       "adaptivethink",
+    "WANDB_PROJECT":       "adaptivethink-samsung",
 
     # ── Data paths ───────────────────────────────────────────────
     "DATA_DIR":            "/mnt/data",   # NVMe; falls back to ./data
