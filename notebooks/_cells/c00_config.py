@@ -25,8 +25,8 @@ CFG = {
     "WANDB_PROJECT":       "adaptivethink-samsung",
 
     # ── Data paths ───────────────────────────────────────────────
-    "DATA_DIR":            "/mnt/data",   # NVMe; falls back to ./data
-    "OUTPUTS_DIR":         "/mnt/outputs",
+    "DATA_DIR":            "./data",      # Local fallback
+    "OUTPUTS_DIR":         "./outputs",
 
     # ── Teacher labels ───────────────────────────────────────────
     "TEACHER_PROVIDER":    "groq",   # deepinfra | openai | together | groq
