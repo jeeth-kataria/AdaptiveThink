@@ -1,8 +1,17 @@
 # ── Cell 2: Mount NVMe + create directory layout ─────────────────────────────
-import os, subprocess
+import os, subprocess, sys
 from pathlib import Path
 
 REPO_ROOT = Path(os.getcwd())
+# Handle if running from notebooks/ subdirectory
+if REPO_ROOT.name == "notebooks":
+    REPO_ROOT = REPO_ROOT.parent
+    os.chdir(REPO_ROOT)
+    print(f"Changed working directory to: {REPO_ROOT}")
+
+# Add src/ to Python path for imports
+sys.path.insert(0, str(REPO_ROOT / "src"))
+print(f"✅ Added to Python path: {REPO_ROOT / 'src'}")
 
 def _mount_nvme(target: str) -> bool:
     """Format + mount Azure local NVMe. Safe to call repeatedly (checks if mounted)."""

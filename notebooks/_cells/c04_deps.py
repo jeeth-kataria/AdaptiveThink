@@ -51,8 +51,12 @@ try:
 except Exception:
     print("  ⚠️  unsloth failed — using PEFT fallback")
 
-print("\n=== Step 6: install package ===")
-_pip("-e", ".", "--no-build-isolation")
+print("\n=== Step 6: install package (optional) ===")
+try:
+    _pip("-e", ".", "--no-build-isolation")
+    print("  ✅ package installed")
+except Exception as e:
+    print(f"  ⚠️  Package install failed - continuing (using sys.path from Cell 2)")
 
 print("\n=== Step 7: verify ===")
 for pkg in ["torch", "transformers", "trl", "peft", "bitsandbytes"]:
