@@ -6,6 +6,8 @@ CFG = {
     # ── Azure / secrets ──────────────────────────────────────────
     # Leave blank to fall back to Azure Key Vault Managed Identity
     "DEEPINFRA_API_KEY": "",
+    "GROQ_API_KEY_1":    "",
+    "GROQ_API_KEY_2":    "",
     "WANDB_API_KEY":     "",
     "HF_TOKEN":          "",
     # Azure self-shutdown (fill in for auto-deallocate at end)
@@ -27,7 +29,7 @@ CFG = {
     "OUTPUTS_DIR":         "/mnt/outputs",
 
     # ── Teacher labels ───────────────────────────────────────────
-    "TEACHER_PROVIDER":    "deepinfra",   # deepinfra | openai | together
+    "TEACHER_PROVIDER":    "groq",   # deepinfra | openai | together | groq
     "TEACHER_MAX_COST_USD": 50.0,
 
     # ── Verifier (Stage 1) ───────────────────────────────────────
@@ -63,10 +65,22 @@ CFG = {
 }
 
 # ── Validation ───────────────────────────────────────────────────────────────
-_required_if_no_kv = ["DEEPINFRA_API_KEY", "WANDB_API_KEY", "HF_TOKEN"]
 _has_kv = bool(CFG["AZURE_KV_URL"])
 if not _has_kv:
-    _missing = [k for k in _required_if_no_kv if not CFG[k]]
+    # Always required
+    _required = ["WANDB_API_KEY", "HF_TOKEN"]
+    
+    # Provider-specific keys
+    if CFG["TEACHER_PROVIDER"] == "deepinfra":
+        _required.append("DEEPINFRA_API_KEY")
+    elif CFG["TEACHER_PROVIDER"] == "groq":
+        _required.append("GROQ_API_KEY_1")
+    elif CFG["TEACHER_PROVIDER"] == "openai":
+        _required.append("OPENAI_API_KEY")
+    elif CFG["TEACHER_PROVIDER"] == "together":
+        _required.append("TOGETHER_API_KEY")
+    
+    _missing = [k for k in _required if not CFG.get(k)]
     assert not _missing, (
         f"Fill in these keys in CFG (or set AZURE_KV_URL for Key Vault): {_missing}"
     )

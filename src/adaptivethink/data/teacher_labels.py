@@ -21,23 +21,29 @@ Output ONLY valid JSON: {{"difficulty": <float 0-1>, "reason": "<15 words max>"}
 
 Question: {question}"""
 
+GROQ_SYSTEM_PROMPT = """You are a math question difficulty rater. Your only job is to output a single float between 0.0 and 1.0.
+0.0 = trivially easy (single arithmetic step, no reasoning needed)
+1.0 = extremely hard (multi-step reasoning, algebra, or word problem requiring planning)
+Be bimodal — push easy questions toward 0.0–0.2 and hard ones toward 0.8–1.0. Avoid clustering near 0.5.
+Respond with ONLY a float. No explanation, no units, no extra text."""
+
 N_CALLS = 3  # 3 calls per item is sufficient and cheaper than 5
 
 # Cost per 1M tokens (input+output combined rough estimate)
-COST_PER_M = {"deepinfra": 0.14, "openai": 0.60, "together": 0.20}
+COST_PER_M = {"deepinfra": 0.14, "openai": 0.60, "together": 0.20, "groq": 0.0}  # Groq is free tier
 
 
 def _hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
-def _get_client(provider: str):
+def _get_client(provider: str, key_num: int = 1):
     from openai import OpenAI
     if provider == "deepinfra":
         return OpenAI(
             api_key=os.environ["DEEPINFRA_API_KEY"],
             base_url="https://api.deepinfra.com/v1/openai",
-        ), "deepseek-ai/DeepSeek-V3"   # correct DeepInfra model ID
+        ), "deepseek-ai/DeepSeek-V3"
     elif provider == "openai":
         return OpenAI(api_key=os.environ["OPENAI_API_KEY"]), "gpt-4o-mini"
     elif provider == "together":
@@ -45,25 +51,46 @@ def _get_client(provider: str):
             api_key=os.environ["TOGETHER_API_KEY"],
             base_url="https://api.together.xyz/v1",
         ), "Qwen/Qwen2.5-72B-Instruct-Turbo"
+    elif provider == "groq":
+        key = os.environ[f"GROQ_API_KEY_{key_num}"]
+        return OpenAI(
+            api_key=key,
+            base_url="https://api.groq.com/openai/v1",
+        ), "llama-3.3-70b-versatile"
     raise ValueError(f"Unknown provider: {provider}")
 
 
-def _query_once(client, model: str, question: str, retries: int = 3) -> float | None:
+def _query_once(client, model: str, question: str, provider: str, retries: int = 3) -> float | None:
     for attempt in range(retries):
         try:
-            resp = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": TEACHER_PROMPT.format(question=question)}],
-                temperature=0.2,
-                max_tokens=80,
-            )
-            raw = resp.choices[0].message.content.strip()
-            # Strip markdown code fences if present
-            if raw.startswith("```"):
-                raw = raw.split("```")[1].lstrip("json").strip()
-            data = json.loads(raw)
-            d = float(data["difficulty"])
-            return max(0.0, min(1.0, d))
+            if provider == "groq":
+                # Groq with simple float response
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": GROQ_SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Rate the difficulty of this math question:\n{question}"}
+                    ],
+                    temperature=0.2,
+                    max_tokens=10,
+                )
+                raw = resp.choices[0].message.content.strip()
+                d = float(raw)
+                return max(0.0, min(1.0, d))
+            else:
+                # Other providers with JSON response
+                resp = client.chat.completions.create(
+                    model=model,
+                    messages=[{"role": "user", "content": TEACHER_PROMPT.format(question=question)}],
+                    temperature=0.2,
+                    max_tokens=80,
+                )
+                raw = resp.choices[0].message.content.strip()
+                if raw.startswith("```"):
+                    raw = raw.split("```")[1].lstrip("json").strip()
+                data = json.loads(raw)
+                d = float(data["difficulty"])
+                return max(0.0, min(1.0, d))
         except Exception as e:
             wait = 2 ** attempt
             print(f"  [warn] API error (attempt {attempt+1}/{retries}): {e} — retrying in {wait}s")
@@ -76,7 +103,11 @@ def label_items(items: list[dict], db_path: str, provider: str, max_cost_usd: fl
     db.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, difficulty REAL)")
     db.commit()
 
-    client, model = _get_client(provider)
+    client1, model = _get_client(provider, key_num=1)
+    client2 = None
+    if provider == "groq" and "GROQ_API_KEY_2" in os.environ:
+        client2, _ = _get_client(provider, key_num=2)
+    
     results = []
     total_calls = 0
     cost_per_m = COST_PER_M.get(provider, 0.20)
@@ -88,7 +119,17 @@ def label_items(items: list[dict], db_path: str, provider: str, max_cost_usd: fl
             results.append({**item, "difficulty": row[0]})
             continue
 
-        scores = [s for _ in range(N_CALLS) if (s := _query_once(client, model, item["question"])) is not None]
+        scores = []
+        for _ in range(N_CALLS):
+            # Try key 1
+            s = _query_once(client1, model, item["question"], provider)
+            if s is None and client2 is not None:
+                # Fallback to key 2 on failure (rate limit or error)
+                print(f"  [fallback] Retrying with API key 2")
+                s = _query_once(client2, model, item["question"], provider)
+            if s is not None:
+                scores.append(s)
+        
         total_calls += N_CALLS
 
         d = sum(scores) / len(scores) if scores else 0.5
@@ -115,7 +156,7 @@ if __name__ == "__main__":
     p.add_argument("--out",           default="data/teacher_labels.jsonl")
     p.add_argument("--db",            default="data/teacher_cache.sqlite")
     p.add_argument("--provider",      default="deepinfra",
-                   choices=["deepinfra", "openai", "together"])
+                   choices=["deepinfra", "openai", "together", "groq"])
     p.add_argument("--max-cost-usd",  type=float, default=50.0)
     args = p.parse_args()
 
