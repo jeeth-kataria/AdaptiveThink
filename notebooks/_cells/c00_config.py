@@ -17,9 +17,9 @@ CFG = {
     "AZURE_KV_URL":          "",  # e.g. "https://adaptivethink-kv.vault.azure.net/"
 
     # ── HF Hub ───────────────────────────────────────────────────
-    "HF_ORG":              "jeeth-kataria",
-    "VERIFIER_REPO":       "jeeth-kataria/verifier-400m",
-    "LABELS_REPO":         "jeeth-kataria/difficulty-labels",
+    "HF_ORG":              "Jeeeeet123",
+    "VERIFIER_REPO":       "Jeeeeet123/verifier-400m",
+    "LABELS_REPO":         "Jeeeeet123/difficulty-labels",
 
     # ── Wandb ────────────────────────────────────────────────────
     "WANDB_PROJECT":       "adaptivethink-samsung",
