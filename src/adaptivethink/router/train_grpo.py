@@ -153,6 +153,12 @@ def train(args):
     if resume:
         print(f"[resume] Resuming from {resume}")
 
+    # TRL 0.12.1: vllm_gpu_memory_utilization is passed via vllm_server_kwargs,
+    # NOT as a direct GRPOConfig kwarg (which would raise TypeError).
+    vllm_server_kwargs = (
+        {"gpu_memory_utilization": cfg["vllm_gpu_memory_utilization"]}
+        if cfg["use_vllm"] else {}
+    )
     grpo_cfg = GRPOConfig(
         output_dir=args.output_dir,
         max_steps=cfg["steps"],
@@ -173,8 +179,7 @@ def train(args):
         report_to="wandb",
         seed=args.seed,
         use_vllm=cfg["use_vllm"],
-        **({"vllm_gpu_memory_utilization": cfg["vllm_gpu_memory_utilization"]}
-           if cfg["use_vllm"] else {}),
+        vllm_server_kwargs=vllm_server_kwargs,
     )
 
     trainer = GRPOTrainer(

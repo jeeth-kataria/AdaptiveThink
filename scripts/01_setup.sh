@@ -2,6 +2,9 @@
 # scripts/01_setup.sh — works on Colab T4, Vast.ai RTX 4090, local Linux
 set -e
 
+# Create required directories up front so no script ever fails with ENOENT
+mkdir -p data logs results/pareto results/ablations results/figures results/onDevice outputs
+
 # Detect environment
 CUDA_VER=$(python -c "import torch; print(torch.version.cuda or '0')" 2>/dev/null || echo "0")
 GPU_NAME=$(python -c "import torch; print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')" 2>/dev/null || echo "CPU")
@@ -64,3 +67,33 @@ except: print('flash_attn: NOT installed (non-fatal)')
 
 pip freeze > requirements.lock.txt
 echo "=== Setup complete. requirements.lock.txt written. ==="
+
+# ── HF Hub pre-creation check ─────────────────────────────────────────────────
+# Repos must exist BEFORE training starts; push_to_hub errors at step 50
+# will kill a 36-hour run. Run this once and confirm.
+if [ -n "${HF_TOKEN}" ]; then
+  echo "=== Checking HF Hub repos ==="
+  python - <<'PYEOF'
+import os
+from huggingface_hub import HfApi
+api = HfApi(token=os.environ["HF_TOKEN"])
+repos = [
+    "statezero/verifier-400m",
+    "statezero/router-1p5b-seed0",
+    "statezero/router-1p5b-seed1",
+    "statezero/router-1p5b-seed2",
+    "statezero/difficulty-labels",
+]
+for repo in repos:
+    try:
+        api.repo_info(repo_id=repo)
+        print(f"  ✓ {repo} exists")
+    except Exception:
+        print(f"  + creating {repo}")
+        repo_type = "dataset" if "labels" in repo else "model"
+        api.create_repo(repo_id=repo, repo_type=repo_type, private=True, exist_ok=True)
+        print(f"  ✓ {repo} created")
+PYEOF
+else
+  echo "=== HF_TOKEN not set — skipping HF repo check (set it in .env before training) ==="
+fi

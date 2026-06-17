@@ -61,15 +61,34 @@ Full CoT      Direct answer
 
 **Key novelty vs prior work:** The length penalty is gated by `(1−d)` where `d` comes from an *external* distilled verifier — not internal model confidence (AdaptThink) or group-rollout pass-rate (CODA). Easy questions pay full penalty; hard questions pay near-zero, preventing routing collapse on difficult items.
 
-### Quick Start
+### Quick Start (Azure VM - Recommended)
 
 ```bash
+# 1. Clone the repo
 git clone https://github.com/jeeth-kataria/AdaptiveThink.git
 cd AdaptiveThink
-bash scripts/01_setup.sh
+
+# 2. Run quick setup (auto-installs everything)
+bash quick_start.sh
+
+# 3. Get API keys (takes 5 minutes):
+#    - DeepInfra:    https://deepinfra.com/dash/api_keys
+#    - WandB:        https://wandb.ai/authorize
+#    - HuggingFace:  https://huggingface.co/settings/tokens
+#    (See API_KEYS_GUIDE.md for detailed steps)
+
+# 4. Start Jupyter and run the notebook
+jupyter notebook notebooks/AdaptiveThink_Train.ipynb
+# Edit Cell 0: paste your API keys
+# Set GRPO_STEPS: 200 for pilot (or 1500 for full)
+# Click "Run All"
 ```
 
-See [`WHERE_TO_RUN.md`](WHERE_TO_RUN.md) for exact commands per environment (Colab T4 for data/verifier, Vast.ai RTX 4090 for GRPO training).
+**Complete guides:**
+- [`AZURE_SETUP_GUIDE.md`](AZURE_SETUP_GUIDE.md) - Azure VM setup (step-by-step)
+- [`API_KEYS_GUIDE.md`](API_KEYS_GUIDE.md) - How to get all 3 API keys
+- [`SAFETY_CHECKLIST.md`](SAFETY_CHECKLIST.md) - Checkpoint & safety verification
+- [`WHERE_TO_RUN.md`](WHERE_TO_RUN.md) - Alternative environments (Colab, Vast.ai)
 
 ### End-to-end pipeline
 

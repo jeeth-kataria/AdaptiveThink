@@ -83,6 +83,13 @@ def train(args):
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     total_steps = len(train_dl) * (args.epochs - start_epoch)
     sched = get_cosine_schedule_with_warmup(opt, max(1, int(0.05 * total_steps)), total_steps)
+    # Restore optimizer + scheduler state so resumed runs don't cold-start
+    if resume_path.exists() and start_epoch > 0:
+        state = torch.load(resume_path, map_location=device)
+        if "optimizer" in state:
+            opt.load_state_dict(state["optimizer"])
+        if "scheduler" in state:
+            sched.load_state_dict(state["scheduler"])
     mse_fn = nn.MSELoss()
     bce_fn = nn.BCEWithLogitsLoss()
 
@@ -106,7 +113,9 @@ def train(args):
 
         # Save last (for resume) and best
         ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save({"model": model.state_dict(), "epoch": epoch}, resume_path)
+        torch.save({"model": model.state_dict(), "epoch": epoch,
+                    "optimizer": opt.state_dict(), "scheduler": sched.state_dict()},
+                   resume_path)
         if rho > best_rho:
             best_rho = rho
             torch.save(model.state_dict(), ckpt_path)

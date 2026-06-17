@@ -34,7 +34,7 @@ cfg = GRPOConfig(output_dir="outputs/smoke", max_steps=50,
     per_device_train_batch_size=1, num_generations=4,
     max_prompt_length=256, max_completion_length=256,
     temperature=0.7, beta=5e-3, report_to="none",
-    use_vllm=True, vllm_gpu_memory_utilization=0.40)
+    use_vllm=True, vllm_server_kwargs={"gpu_memory_utilization": 0.40})
 
 trainer = GRPOTrainer(model=model, tokenizer=tok, reward_funcs=reward_fn,
     args=cfg, train_dataset=ds)

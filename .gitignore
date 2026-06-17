@@ -1,6 +1,8 @@
 .env
 wandb/
 outputs/
+logs/
+third_party/
 *.gguf
 *.bin
 *.safetensors
