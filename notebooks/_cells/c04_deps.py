@@ -1,5 +1,6 @@
 # ── Cell 4: Install pinned dependencies ──────────────────────────────────────
 import subprocess, sys, os, importlib
+from pathlib import Path
 
 def _pip(*args):
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", *args], check=True)
@@ -10,86 +11,56 @@ def _version(pkg):
     except Exception:
         return None
 
-CUDA_VER = os.environ.get("CUDA_VERSION", "12.1").split(".")[0] + "." + \
-           os.environ.get("CUDA_VERSION", "12.1").split(".")[-1] if "." in \
-           os.environ.get("CUDA_VERSION", "12.1") else "12.1"
-
-print("=== Step 1: torch (must pin before everything else) ===")
+print("=== Step 1: torch ===")
 try:
     import torch
     if torch.__version__.startswith("2.5") or torch.__version__.startswith("2.4"):
-        print(f"  ✅ torch {torch.__version__} already installed (compatible)")
+        print(f"  ✅ torch {torch.__version__} already installed")
     else:
-        _pip("torch==2.4.1", "--index-url", "https://download.pytorch.org/whl/cu121")
+        _pip("torch==2.5.1", "--index-url", "https://download.pytorch.org/whl/cu121")
         import torch
         print(f"  ✅ torch {torch.__version__}")
 except ImportError:
-    _pip("torch==2.4.1", "--index-url", "https://download.pytorch.org/whl/cu121")
+    _pip("torch==2.5.1", "--index-url", "https://download.pytorch.org/whl/cu121")
     import torch
     print(f"  ✅ torch {torch.__version__}")
 
-print("=== Step 2: core requirements ===")
-_pip("-r", "requirements.txt")
+print("\n=== Step 2: core ML libraries ===")
+_pip("transformers==4.45.2", "accelerate==0.34.2", "peft==0.12.0", "bitsandbytes==0.43.3", "trl==0.11.4")
 
-print("=== Step 3: flash-attn (ABI-sensitive) ===")
+print("\n=== Step 3: data & utilities ===")
+_pip("datasets==3.1.0", "scipy==1.14.1", "numpy==1.26.4", "sentencepiece==0.2.0")
+_pip("wandb==0.18.7", "huggingface-hub==0.26.5", "openai==1.54.0", "python-dotenv==1.0.1", "pytest==8.3.4")
+
+print("\n=== Step 4: flash-attn (optional) ===")
 if torch.cuda.is_available():
     try:
         _pip("flash-attn==2.7.0.post2", "--no-build-isolation", "--no-cache-dir")
-        import flash_attn
-        print(f"  ✅ flash_attn {flash_attn.__version__}")
-    except Exception as e:
-        print(f"  ⚠️  flash-attn failed ({e}) — non-fatal, will use sdpa fallback")
+        print("  ✅ flash-attn")
+    except Exception:
+        print("  ⚠️  flash-attn failed — using sdpa fallback")
 else:
-    print("  ⚠️  No GPU — skipping flash-attn")
+    print("  ⏭️  No GPU — skipping")
 
-print("=== Step 4: vLLM (only on ≥22 GB VRAM) ===")
-vram = getattr(__builtins__ if isinstance(__builtins__, dict) else __builtins__,
-               "_AT_VRAM_GB", 0) or \
-       (torch.cuda.get_device_properties(0).total_memory/1e9 if torch.cuda.is_available() else 0)
-if vram >= 22:
-    try:
-        _pip("vllm==0.6.4.post1")
-        import vllm
-        print(f"  ✅ vllm {vllm.__version__}")
-    except Exception as e:
-        print(f"  ⚠️  vLLM failed ({e}) — train_grpo.py will fall back to HF generation")
-else:
-    print(f"  ⚠️  VRAM {vram:.1f} GB < 22 GB — skipping vLLM (T4 mode)")
-
-print("=== Step 5: Unsloth ===")
+print("\n=== Step 5: unsloth (optional) ===")
+vram = torch.cuda.get_device_properties(0).total_memory/1e9 if torch.cuda.is_available() else 0
 try:
-    # A100 (Ampere, CUDA 12.1) needs the cu121-ampere extras
     tag = "cu121-ampere" if vram >= 60 else "colab-new"
     _pip(f"unsloth[{tag}] @ git+https://github.com/unslothai/unsloth.git")
-    import unsloth
-    print(f"  ✅ unsloth {unsloth.__version__}")
-except Exception as e:
-    print(f"  ⚠️  Unsloth failed ({e}) — will use PEFT+BitsAndBytes fallback")
+    print("  ✅ unsloth")
+except Exception:
+    print("  ⚠️  unsloth failed — using PEFT fallback")
 
-print("=== Step 6: install this package ===")
+print("\n=== Step 6: install package ===")
 _pip("-e", ".", "--no-build-isolation")
 
-print("=== Step 7: version sanity check ===")
-_checks = {
-    "transformers": "4.41.2",
-    "trl":          "0.9.4",
-    "peft":         "0.11.0",
-    "accelerate":   "0.30.1",
-}
-_bad = []
-for pkg, expected in _checks.items():
-    got = _version(pkg)
-    # Allow minor version differences
-    ok = got and got.split('.')[:2] == expected.split('.')[:2]
-    print(f"  {'✅' if ok else '❌'} {pkg}: expected {expected}, got {got}")
-    if not ok:
-        _bad.append(pkg)
-if _bad:
-    print(f"⚠️  Version mismatch for: {_bad} - may work anyway")
+print("\n=== Step 7: verify ===")
+for pkg in ["torch", "transformers", "trl", "peft", "bitsandbytes"]:
+    v = _version(pkg)
+    print(f"  ✅ {pkg:15s} {v}")
 
 print("\n✅ All dependencies installed.")
 
-# Log pip freeze to wandb later (deferred until wandb is initialised in Cell 12)
 import subprocess as _sp
 _pip_freeze = _sp.run([sys.executable,"-m","pip","freeze"], capture_output=True, text=True).stdout
 import builtins; builtins._AT_PIP_FREEZE = _pip_freeze

@@ -5,11 +5,11 @@
 CFG = {
     # ── Azure / secrets ──────────────────────────────────────────
     # Leave blank to fall back to Azure Key Vault Managed Identity
-    "DEEPINFRA_API_KEY": "",
-    "GROQ_API_KEY_1":    "",
-    "GROQ_API_KEY_2":    "",
-    "WANDB_API_KEY":     "",
-    "HF_TOKEN":          "",
+    "DEEPINFRA_API_KEY": "",  # Not needed if using Groq
+    "GROQ_API_KEY_1":    "",  # Get from: https://console.groq.com/keys
+    "GROQ_API_KEY_2":    "",  # Get SECOND key for fallback
+    "WANDB_API_KEY":     "",  # Get from: https://wandb.ai/authorize
+    "HF_TOKEN":          "",  # Get from: https://huggingface.co/settings/tokens
     # Azure self-shutdown (fill in for auto-deallocate at end)
     "AZURE_SUBSCRIPTION_ID": "",
     "AZURE_RESOURCE_GROUP":  "",

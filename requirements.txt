@@ -1,12 +1,13 @@
-# AdaptiveThink Requirements
-# Install with: pip install -r requirements.txt
+# AdaptiveThink Requirements - CUDA 12.x compatible
+# NOTE: The notebook (Cell 4) handles installation automatically
+# This file is for manual/local setup only
 
 # Core ML libraries
-torch>=2.1.0
+torch==2.5.1
 transformers==4.45.2
 accelerate==0.34.2
 peft==0.12.0
-bitsandbytes==0.44.1
+bitsandbytes==0.43.3
 trl==0.11.4
 
 # Data & utilities
@@ -14,21 +15,12 @@ datasets==3.1.0
 scipy==1.14.1
 numpy==1.26.4
 sentencepiece==0.2.0
-
-# Experiment tracking
 wandb==0.18.7
 huggingface-hub==0.26.5
-
-# API clients
 openai==1.54.0
 python-dotenv==1.0.1
+pytest==8.3.4
 
-# Optional: Unsloth (memory-efficient training)
-# Install from git after base requirements:
-# pip install "unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git"
-
-# Optional: flash-attn (faster attention, requires CUDA 11.8+)
-# Install with: pip install flash-attn --no-build-isolation
-
-# Optional: vLLM (fast generation, requires >=22GB VRAM)
-# Install with: pip install vllm==0.6.4.post1
+# Optional (installed by Cell 4 with fallbacks):
+# flash-attn==2.7.0.post2 --no-build-isolation
+# unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git
